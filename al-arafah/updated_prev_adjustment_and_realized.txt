@@ -1,0 +1,67 @@
+[
+  {
+    $group: {
+      _id: "$LCNo"
+    }
+  },
+  {
+    $lookup: {
+      from: "updated_source_data",
+      localField: "_id",
+      foreignField: "LCNo",
+      as: "updated_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updated_data"
+    }
+  },
+  {
+    $replaceRoot: {
+      newRoot: "$updated_data"
+    }
+  },
+  {
+    $lookup: {
+      from: "al_arafah_realized",
+      localField: "BankRef",
+      foreignField: "BankRef",
+      as: "realized"
+    }
+  },
+  {
+    $match: {
+      realized: {
+        $size: 0
+      }
+    }
+  },
+  {
+    $unionWith: {
+      coll: "al_arafah_adjustment",
+      pipeline: [
+        {
+          $addFields: {
+            source: "adjustment"
+          }
+        }
+      ]
+    }
+  },
+  {
+    $match: {
+      PRCAmount: {
+        $exists: true
+      },
+      PRCAmount: {
+        $gt: 0
+      }
+    }
+  },
+  {
+    $project: {
+      realized: 0
+    }
+  }
+]

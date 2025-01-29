@@ -1,0 +1,363 @@
+[
+  {
+    $facet: {
+      prevProcessingSum: [
+        {
+          $group: {
+            _id: null,
+            prevProcessingSum: {
+              $sum: "$InvoiceValue"
+            }
+          }
+        }
+      ],
+      adjustmentSum: [
+        {
+          $unionWith: {
+            coll: "al_arafah_adjustment",
+            pipeline: [
+              {
+                $addFields: {
+                  source: "adjustment"
+                }
+              }
+            ]
+          }
+        },
+        {
+          $match: {
+            source: "adjustment"
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            adjustmentSum: {
+              $sum: "$InvoiceValue"
+            }
+          }
+        }
+      ],
+      mimatchValUpAndErp: [
+        {
+          $group: {
+            _id: "$LCNo",
+            prevProcessInvVal: {
+              $sum: "$InvoiceValue"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "al_arafah_realized",
+            localField: "_id",
+            foreignField: "LCNo",
+            as: "realized"
+          }
+        },
+        {
+          $unwind: {
+            path: "$realized",
+            includeArrayIndex: "realizedIndex",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $group: {
+            _id: "$_id",
+            prevProcessInvVal: {
+              $first: "$prevProcessInvVal"
+            },
+            realizedInvVal: {
+              $sum: "$realized.InvoiceValue"
+            }
+          }
+        },
+        {
+          $project: {
+            prevProcessRealizedadVal: {
+              $add: [
+                "$prevProcessInvVal",
+                "$realizedInvVal"
+              ]
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "updated_source_data",
+            localField: "_id",
+            foreignField: "LCNo",
+            as: "updated_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$updated_data",
+            includeArrayIndex: "updatedArrIndex",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $group: {
+            _id: "$_id",
+            prevProcessRealizedadVal: {
+              $first: "$prevProcessRealizedadVal"
+            },
+            updatedDataInvVal: {
+              $sum: "$updated_data.InvoiceValue"
+            }
+          }
+        },
+        {
+          $project: {
+            prevProcessRealizedadVal:
+              "$prevProcessRealizedadVal",
+            updatedDataInvVal:
+              "$updatedDataInvVal",
+            difference: {
+              $subtract: [
+                "$prevProcessRealizedadVal",
+                "$updatedDataInvVal"
+              ]
+            }
+          }
+        },
+        {
+          $match: {
+            difference: {
+              $ne: 0
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            prevProcessGt: {
+              $sum: {
+                $cond: {
+                  if: {
+                    $lt: ["$difference", 0]
+                  },
+                  then: "$difference",
+                  else: 0
+                }
+              }
+            },
+            prevProcessLt: {
+              $sum: {
+                $cond: {
+                  if: {
+                    $gt: ["$difference", 0]
+                  },
+                  then: "$difference",
+                  else: 0
+                }
+              }
+            },
+            totalMismatchVal: {
+              $sum: "$difference"
+            }
+          }
+        }
+      ],
+      updatedValWithoutAdjustment: [
+        {
+          $group: {
+            _id: "$LCNo"
+          }
+        },
+        {
+          $lookup: {
+            from: "updated_source_data",
+            localField: "_id",
+            foreignField: "LCNo",
+            as: "updated_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$updated_data"
+          }
+        },
+        {
+          $replaceRoot: {
+            newRoot: "$updated_data"
+          }
+        },
+        {
+          $lookup: {
+            from: "al_arafah_realized",
+            localField: "BankRef",
+            foreignField: "BankRef",
+            as: "realized"
+          }
+        },
+        {
+          $match: {
+            realized: {
+              $size: 0
+            }
+          }
+        },
+        {
+          $match: {
+            PRCAmount: {
+              $exists: true
+            },
+            PRCAmount: {
+              $gt: 0
+            }
+          }
+        },
+        {
+          $project: {
+            realized: 0
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            updatedValWithoutAdjustment: {
+              $sum: "$InvoiceValue"
+            }
+          }
+        }
+      ],
+      updatedValWithAdjustment: [
+        {
+          $group: {
+            _id: "$LCNo"
+          }
+        },
+        {
+          $lookup: {
+            from: "updated_source_data",
+            localField: "_id",
+            foreignField: "LCNo",
+            as: "updated_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$updated_data"
+          }
+        },
+        {
+          $replaceRoot: {
+            newRoot: "$updated_data"
+          }
+        },
+        {
+          $lookup: {
+            from: "al_arafah_realized",
+            localField: "BankRef",
+            foreignField: "BankRef",
+            as: "realized"
+          }
+        },
+        {
+          $match: {
+            realized: {
+              $size: 0
+            }
+          }
+        },
+        {
+          $unionWith: {
+            coll: "al_arafah_adjustment",
+            pipeline: [
+              {
+                $addFields: {
+                  source: "adjustment"
+                }
+              }
+            ]
+          }
+        },
+        {
+          $match: {
+            PRCAmount: {
+              $exists: true
+            },
+            PRCAmount: {
+              $gt: 0
+            }
+          }
+        },
+        {
+          $project: {
+            realized: 0
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            updatedValWithAdjustment: {
+              $sum: "$InvoiceValue"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    $unwind: {
+      path: "$prevProcessingSum"
+    }
+  },
+  {
+    $unwind: {
+      path: "$adjustmentSum"
+    }
+  },
+  {
+    $unwind: {
+      path: "$mimatchValUpAndErp"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updatedValWithoutAdjustment"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updatedValWithAdjustment"
+    }
+  },
+  {
+    $project: {
+      prevProcessingSum:
+        "$prevProcessingSum.prevProcessingSum",
+      adjustmentSum:
+        "$adjustmentSum.adjustmentSum",
+      prevProcessGt:
+        "$mimatchValUpAndErp.prevProcessGt",
+      prevProcessLt:
+        "$mimatchValUpAndErp.prevProcessLt",
+      mimatchValUpAndErp:
+        "$mimatchValUpAndErp.totalMismatchVal",
+      updatedValWithoutAdjustment:
+        "$updatedValWithoutAdjustment.updatedValWithoutAdjustment",
+      updatedValWithAdjustment:
+        "$updatedValWithAdjustment.updatedValWithAdjustment"
+    }
+  },
+  {
+    $addFields: {
+      adjustedCollAddOrExclude: {
+        $subtract: [
+          "$prevProcessingSum",
+          "$updatedValWithoutAdjustment"
+        ]
+      },
+      adjustedCollAddOrExcludeCurrStatus: {
+        $subtract: [
+          "$prevProcessingSum",
+          "$updatedValWithAdjustment"
+        ]
+      }
+    }
+  }
+]
