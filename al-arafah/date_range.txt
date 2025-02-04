@@ -1,0 +1,25 @@
+[
+  {
+    $addFields: {
+      f_PRCDate: {
+        $dateFromString: {
+          dateString: "$PRCDate",
+          format: "%d/%m/%Y"
+        }
+      }
+    }
+  },
+  {
+    $match: {
+      f_PRCDate: {
+        $gte: new Date(
+          "2024-02-01T00:00:00.000+00:00"
+        ),
+        // Start date (inclusive)
+        $lte: new Date(
+          "2024-02-29T00:00:00.000+00:00"
+        ) // End date (inclusive)
+      }
+    }
+  }
+]
