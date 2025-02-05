@@ -1,0 +1,35 @@
+[
+  {
+    $lookup: {
+      from: "updated_source_export",
+      localField: "BankRef",
+      foreignField: "BankRef",
+      as: "update_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$update_data",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $project: {
+      final_PRCAmount: "$PRCAmount",
+      export_PRCAmount: "$update_data.PRCAMTUsd",
+      compare_PRCDate: {
+        $cmp: [
+          "$PRCAmount",
+          "$update_data.PRCAMTUsd"
+        ]
+      }
+    }
+  },
+  {
+    $match: {
+      compare_PRCDate: {
+        $ne: 0
+      }
+    }
+  }
+]
