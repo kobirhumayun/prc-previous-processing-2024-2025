@@ -1,0 +1,47 @@
+[
+  {
+    $lookup: {
+      from: "updated_source_export",
+      localField: "BankRef",
+      foreignField: "BankRef",
+      as: "update_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$update_data",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $project: {
+      final_PRCDate: "$PRCDate",
+      export_PRCDate: "$update_data.PRCDate",
+      compare_PRCDate: {
+        $cmp: [
+          {
+            $dateFromString: {
+              dateString: "$PRCDate",
+              format: "%d/%m/%Y",
+              onError: "$PRCDate"
+            }
+          },
+          {
+            $dateFromString: {
+              dateString: "$update_data.PRCDate",
+              format: "%d-%m-%Y",
+              onError: "$update_data.PRCDate"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    $match: {
+      compare_PRCDate: {
+        $ne: 0
+      }
+    }
+  }
+]
