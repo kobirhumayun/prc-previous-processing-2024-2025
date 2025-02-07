@@ -1,0 +1,122 @@
+[
+  {
+    $group: {
+      _id: "$FileNo",
+      prevProcessInvVal: {
+        $sum: "$InvoiceValue"
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: "al_arafah_realized",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "realized"
+    }
+  },
+  {
+    $unwind: {
+      path: "$realized",
+      includeArrayIndex: "realizedIndex",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      prevProcessInvVal: {
+        $first: "$prevProcessInvVal"
+      },
+      realizedInvVal: {
+        $sum: "$realized.InvoiceValue"
+      }
+    }
+  },
+  {
+    $project: {
+      prevProcessPlusRealizedadVal: {
+        $add: [
+          "$prevProcessInvVal",
+          "$realizedInvVal"
+        ]
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: "updated_source_data",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "updated_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updated_data",
+      includeArrayIndex: "updatedArrIndex",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      prevProcessPlusRealizedadVal: {
+        $first: "$prevProcessPlusRealizedadVal"
+      },
+      updatedDataInvVal: {
+        $sum: "$updated_data.InvoiceValue"
+      }
+    }
+  },
+  {
+    $project: {
+      prevProcessPlusRealizedadVal:
+        "$prevProcessPlusRealizedadVal",
+      updatedDataInvVal: "$updatedDataInvVal",
+      difference: {
+        $subtract: [
+          "$prevProcessPlusRealizedadVal",
+          "$updatedDataInvVal"
+        ]
+      }
+    }
+  },
+  {
+    $match: {
+      difference: {
+        $ne: 0
+      }
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      prevProcessGt: {
+        $sum: {
+          $cond: {
+            if: {
+              $lt: ["$difference", 0]
+            },
+            then: "$difference",
+            else: 0
+          }
+        }
+      },
+      prevProcessLt: {
+        $sum: {
+          $cond: {
+            if: {
+              $gt: ["$difference", 0]
+            },
+            then: "$difference",
+            else: 0
+          }
+        }
+      },
+      totalMismatchVal: {
+        $sum: "$difference"
+      }
+    }
+  }
+]
