@@ -161,6 +161,66 @@
           }
         }
       ],
+      calcelLc: [
+        {
+          $group: {
+            _id: "$FileNo",
+            processVal: {
+              $sum: "$InvoiceValue"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "updated_source_data",
+            localField: "_id",
+            foreignField: "FileNo",
+            as: "updated_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$updated_data",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $group: {
+            _id: "$_id",
+            processVal: {
+              $first: "$processVal"
+            },
+            updatedVal: {
+              $sum: "$updated_data.InvoiceValue"
+            },
+            updatedPrcVal: {
+              $sum: "$updated_data.PRCAmount"
+            }
+          }
+        },
+        {
+          $match: {
+            $expr: {
+              $and: [
+                {
+                  $eq: [
+                    "$processVal",
+                    "$updatedVal"
+                  ]
+                },
+                {
+                  $eq: ["$updatedPrcVal", 0]
+                }
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            calcelLc: "$processVal"
+          }
+        }
+      ],
       updatedValWithoutAdjustment: [
         {
           $group: {
@@ -318,6 +378,11 @@
   },
   {
     $unwind: {
+      path: "$calcelLc"
+    }
+  },
+  {
+    $unwind: {
       path: "$updatedValWithoutAdjustment"
     }
   },
@@ -338,6 +403,7 @@
         "$mimatchValUpAndErp.prevProcessLt",
       mimatchValUpAndErp:
         "$mimatchValUpAndErp.totalMismatchVal",
+      calcelLc: "$calcelLc.calcelLc",
       updatedValWithoutAdjustment:
         "$updatedValWithoutAdjustment.updatedValWithoutAdjustment",
       updatedValWithAdjustment:
