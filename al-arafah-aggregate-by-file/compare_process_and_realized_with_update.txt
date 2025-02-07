@@ -1,0 +1,97 @@
+[
+  {
+    $group: {
+      _id: "$FileNo",
+      processVal: {
+        $sum: "$InvoiceValue"
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: "updated_source_data",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "updated_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updated_data",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      processVal: {
+        $first: "$processVal"
+      },
+      updatedVal: {
+        $sum: "$updated_data.InvoiceValue"
+      }
+    }
+  },
+  {
+    $addFields: {
+      diffProUpdate: {
+        $subtract: ["$processVal", "$updatedVal"]
+      }
+    }
+  },
+  {
+    $match: {
+      diffProUpdate: {
+        $ne: 0
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: "al_arafah_realized",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "realized"
+    }
+  },
+  {
+    $unwind: {
+      path: "$realized",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      processVal: {
+        $first: "$processVal"
+      },
+      updatedVal: {
+        $first: "$updatedVal"
+      },
+      diffProUpdate: {
+        $first: "$diffProUpdate"
+      },
+      realizedVal: {
+        $sum: "$realized.InvoiceValue"
+      }
+    }
+  },
+  {
+    $addFields: {
+      diffProPlusRealSubUpdate: {
+        $subtract: [
+          {
+            $add: ["$processVal", "$realizedVal"]
+          },
+          "$updatedVal"
+        ]
+      }
+    }
+  },
+  {
+    $match: {
+      diffProPlusRealSubUpdate: { $ne: 0 }
+    }
+  }
+]
