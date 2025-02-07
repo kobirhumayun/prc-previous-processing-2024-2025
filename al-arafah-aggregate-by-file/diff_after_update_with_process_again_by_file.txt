@@ -1,0 +1,106 @@
+[
+  {
+    $group: {
+      _id: "$FileNo"
+    }
+  },
+  {
+    $lookup: {
+      from: "updated_source_data",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "updated_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updated_data"
+    }
+  },
+  {
+    $replaceRoot: {
+      newRoot: "$updated_data"
+    }
+  },
+  {
+    $lookup: {
+      from: "al_arafah_realized",
+      localField: "BankRef",
+      foreignField: "BankRef",
+      as: "realized"
+    }
+  },
+  {
+    $match: {
+      realized: {
+        $size: 0
+      }
+    }
+  },
+  {
+    $match: {
+      PRCAmount: {
+        $exists: true
+      },
+      PRCAmount: {
+        $gt: 0
+      }
+    }
+  },
+  {
+    $project: {
+      realized: 0
+    }
+  },
+  {
+    $group: {
+      _id: "$FileNo",
+      sumByUpdatedFile: {
+        $sum: "$InvoiceValue"
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: "al_arafah_processing",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "fromProcessingAgain"
+    }
+  },
+  {
+    $unwind: {
+      path: "$fromProcessingAgain",
+      includeArrayIndex: "sl",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      sumByUpdatedFile: {
+        $first: "$sumByUpdatedFile"
+      },
+      sumByLcFromProcess: {
+        $sum: "$fromProcessingAgain.InvoiceValue"
+      }
+    }
+  },
+  {
+    $project: {
+      diffAfterUpdateWithProcessAgain: {
+        $subtract: [
+          "$sumByUpdatedFile",
+          "$sumByLcFromProcess"
+        ]
+      }
+    }
+  },
+  {
+    $match: {
+      diffAfterUpdateWithProcessAgain: {
+        $ne: 0
+      }
+    }
+  }
+]
