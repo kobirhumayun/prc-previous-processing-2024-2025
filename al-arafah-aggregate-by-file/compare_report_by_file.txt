@@ -216,8 +216,16 @@
           }
         },
         {
+          $group: {
+            _id: null,
+            total: {
+              $sum: "$processVal"
+            }
+          }
+        },
+        {
           $project: {
-            calcelLc: "$processVal"
+            calcelLc: "$total"
           }
         }
       ],
