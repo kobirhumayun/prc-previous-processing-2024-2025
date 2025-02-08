@@ -1,0 +1,138 @@
+﻿[
+  {
+    $group: {
+      _id: "$FileNo",
+      processVal: {
+        $sum: "$InvoiceValue"
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: "updated_source_data",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "updated_data"
+    }
+  },
+  {
+    $unwind: {
+      path: "$updated_data",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      processVal: {
+        $first: "$processVal"
+      },
+      updatedVal: {
+        $sum: "$updated_data.InvoiceValue"
+      },
+      updatedPrcVal: {
+        $sum: "$updated_data.PRCAmount"
+      }
+    }
+  },
+  {
+    $addFields: {
+      diffProUpdate: {
+        $subtract: ["$processVal", "$updatedVal"]
+      }
+    }
+  },
+  {
+    $match: {
+      $or: [
+        {
+          diffProUpdate: {
+            $ne: 0
+          }
+        },
+        {
+          // cancel LC
+          updatedPrcVal: {
+            $eq: 0
+          }
+        }
+      ]
+    }
+  },
+  {
+    $lookup: {
+      from: "al_arafah_realized",
+      localField: "_id",
+      foreignField: "FileNo",
+      as: "realized"
+    }
+  },
+  {
+    $unwind: {
+      path: "$realized",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      processVal: {
+        $first: "$processVal"
+      },
+      updatedVal: {
+        $first: "$updatedVal"
+      },
+      diffProUpdate: {
+        $first: "$diffProUpdate"
+      },
+      updatedPrcVal: {
+        $first: "$updatedPrcVal"
+      },
+      realizedVal: {
+        $sum: "$realized.InvoiceValue"
+      }
+    }
+  },
+  {
+    $addFields: {
+      diffProPlusRealSubUpdate: {
+        $subtract: [
+          {
+            $add: ["$processVal", "$realizedVal"]
+          },
+          "$updatedVal"
+        ]
+      }
+    }
+  },
+  {
+    $match: {
+      $or: [
+        {
+          diffProPlusRealSubUpdate: {
+            $ne: 0
+          }
+        },
+        {
+          // cancel LC
+          updatedPrcVal: {
+            $eq: 0
+          }
+        }
+      ]
+    }
+  },
+  {
+    $addFields: {
+      cancelLc: {
+        $cond: {
+          if: {
+            $eq: ["$updatedPrcVal", 0]
+          },
+          then: "canceled",
+          else: "partially mismatch"
+        }
+      }
+    }
+  }
+]
