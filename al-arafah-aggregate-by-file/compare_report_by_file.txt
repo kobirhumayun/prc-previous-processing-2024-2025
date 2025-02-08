@@ -363,51 +363,143 @@
   },
   {
     $unwind: {
-      path: "$prevProcessingSum"
+      path: "$prevProcessingSum",
+      preserveNullAndEmptyArrays: true // Key part!
     }
   },
   {
     $unwind: {
-      path: "$adjustmentSum"
+      path: "$adjustmentSum",
+      preserveNullAndEmptyArrays: true // Key part!
     }
   },
   {
     $unwind: {
-      path: "$mimatchValUpAndErp"
+      path: "$mimatchValUpAndErp",
+      preserveNullAndEmptyArrays: true // Key part!
     }
   },
   {
     $unwind: {
-      path: "$calcelLc"
+      path: "$calcelLc",
+      preserveNullAndEmptyArrays: true // Key part!
     }
   },
   {
     $unwind: {
-      path: "$updatedValWithoutAdjustment"
+      path: "$updatedValWithoutAdjustment",
+      preserveNullAndEmptyArrays: true // Key part!
     }
   },
   {
     $unwind: {
-      path: "$updatedValWithAdjustment"
+      path: "$updatedValWithAdjustment",
+      preserveNullAndEmptyArrays: true // Key part!
     }
   },
   {
     $project: {
-      prevProcessingSum:
-        "$prevProcessingSum.prevProcessingSum",
-      adjustmentSum:
-        "$adjustmentSum.adjustmentSum",
-      prevProcessGt:
-        "$mimatchValUpAndErp.prevProcessGt",
-      prevProcessLt:
-        "$mimatchValUpAndErp.prevProcessLt",
-      mimatchValUpAndErp:
-        "$mimatchValUpAndErp.totalMismatchVal",
-      calcelLc: "$calcelLc.calcelLc",
-      updatedValWithoutAdjustment:
-        "$updatedValWithoutAdjustment.updatedValWithoutAdjustment",
-      updatedValWithAdjustment:
-        "$updatedValWithAdjustment.updatedValWithAdjustment"
+      prevProcessingSum: {
+        $cond: {
+          if: {
+            $ifNull: ["$prevProcessingSum", false]
+          },
+          then: "$prevProcessingSum.prevProcessingSum",
+          else: "$$REMOVE"
+        }
+      },
+      // prevProcessingSum:
+      //   "$prevProcessingSum.prevProcessingSum",
+      adjustmentSum: {
+        $cond: {
+          if: {
+            $ifNull: ["$adjustmentSum", false]
+          },
+          then: "$adjustmentSum.adjustmentSum",
+          else: "$$REMOVE"
+        }
+      },
+      // adjustmentSum: "$adjustmentSum.adjustmentSum",
+      prevProcessGt: {
+        $cond: {
+          if: {
+            $ifNull: [
+              "$mimatchValUpAndErp",
+              false
+            ]
+          },
+          then: "$mimatchValUpAndErp.prevProcessGt",
+          else: "$$REMOVE"
+        }
+      },
+      // prevProcessGt:
+      //   "$mimatchValUpAndErp.prevProcessGt",
+      prevProcessLt: {
+        $cond: {
+          if: {
+            $ifNull: [
+              "$mimatchValUpAndErp",
+              false
+            ]
+          },
+          then: "$mimatchValUpAndErp.prevProcessLt",
+          else: "$$REMOVE"
+        }
+      },
+      // prevProcessLt:
+      //   "$mimatchValUpAndErp.prevProcessLt",
+      mimatchValUpAndErp: {
+        $cond: {
+          if: {
+            $ifNull: [
+              "$mimatchValUpAndErp",
+              false
+            ]
+          },
+          then: "$mimatchValUpAndErp.totalMismatchVal",
+          else: "$$REMOVE"
+        }
+      },
+      // mimatchValUpAndErp:
+      //   "$mimatchValUpAndErp.totalMismatchVal",
+      calcelLc: {
+        $cond: {
+          if: {
+            $ifNull: ["$calcelLc", false]
+          },
+          then: "$calcelLc.calcelLc",
+          else: "$$REMOVE"
+        }
+      },
+      // calcelLc: "$calcelLc.calcelLc",
+      updatedValWithoutAdjustment: {
+        $cond: {
+          if: {
+            $ifNull: [
+              "$updatedValWithoutAdjustment",
+              false
+            ]
+          },
+          then: "$updatedValWithoutAdjustment.updatedValWithoutAdjustment",
+          else: "$$REMOVE"
+        }
+      },
+      // updatedValWithoutAdjustment:
+      //   "$updatedValWithoutAdjustment.updatedValWithoutAdjustment",
+      updatedValWithAdjustment: {
+        $cond: {
+          if: {
+            $ifNull: [
+              "$updatedValWithAdjustment",
+              false
+            ]
+          },
+          then: "$updatedValWithAdjustment.updatedValWithAdjustment",
+          else: "$$REMOVE"
+        }
+      }
+      // updatedValWithAdjustment:
+      //   "$updatedValWithAdjustment.updatedValWithAdjustment"
     }
   },
   {
